@@ -1,0 +1,50 @@
+
+
+//-----------------------------------------------
+//Lecial grammer (tokens):
+
+%lex
+
+%%
+
+\s+               /* skip whitespace */
+
+\"[^\"]*\"        return 'STRING'
+
+\d+               return 'NUMBER'
+
+[\w\-+*=<>/]+     return 'SYMBOL'
+
+/lex
+
+//-------------------------------------------------------
+//Syntactic grammer(BNF):
+
+%%
+
+Exp
+  : Atom
+  | List
+  ; 
+
+Atom
+  : NUMBER { $$ = Number($1) }
+  | STRING
+  | SYMBOL
+  ;
+
+List
+  : '(' ListEntries ')'  { $$ = $2 }
+  ;
+
+// (Exp Exp Exp ...)
+
+// ListEntries Exp
+// ListEntries Exp Exp
+// ListEntries Exp Exp Exp ...
+// Exp Exp Exp
+
+ListEntries
+: ListEntries Exp { $1.push($2); $$ = $1}
+| /* empty */ { $$ = [] }
+;
