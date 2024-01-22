@@ -149,7 +149,7 @@ class Eva
         }
 
         //-------------------------------------------------------
-        // Decrement: (++ foo)
+        // Decrement: (-- foo)
         //
         // Syntactic sugar for: (set foo (- foo 1))
 
@@ -196,10 +196,53 @@ class Eva
             };
     
         }
+        //-----------------------------------------------------
+        // CLass declaration: (class <Name> <Parent> <Body>)
 
+        if(exp[0] === 'class')
+        {
+            const [_tag, name, parent, body] = exp;
 
+            // A class is an invironment! -- a storage of methods,
+            // and shared properties:
 
+            const parentEnv = this.eval(parent, env) || env;
 
+            const classEnv = new Environment({}, parentEnv);
+
+            // Body is evaluated in the class environment.
+
+            this._evalBody(body, classEnv);
+
+            //Class is accessible by name.
+
+            return env.define(name,classEnv);
+        }
+
+        //-------------------------------------------------------------
+        // Class instantiation: (new <Class> <Arguments>...)
+
+        if(exp[0] === 'new')
+        {
+            const classEnv = this.eval(exp[1]);
+
+            // AN instance of a class is an environment!
+            // The `parent` component of the instance environment
+            // is set to its class.
+
+            const instanceEnv = new Environment({}, classEnv);
+
+            const args = exp
+                .slice(2)
+                .map(args => this.eval(arg, env));
+
+            this._callUserDefinedFunction(
+                classEnv.lookup('constructor'),
+                [instanceEnv, ...args],
+            );
+
+            return instanceEnv;
+        }
 
         //-------------------------------------------------------
         // Function calls:
@@ -226,18 +269,7 @@ class Eva
             //2. User-defined function:
             //TODO
 
-            const activationRecord = {};
-
-            fn.params.forEach((param,index) => {
-                activationRecord[param] = args[index];
-            });
-
-            const activationEnv = new Environment(
-                activationRecord,
-                fn.env, //static scope
-            );
-
-            return this._evalBody(fn.body, activationEnv);
+            return this._callUserDefinedFunction(fn, args);
 
         }
 
@@ -245,6 +277,23 @@ class Eva
 
 
         throw `Unimplemented: ${JSON.stringify(exp)}`;
+    }
+
+    _callUserDefinedFunction(fn, args)
+    {
+        const activationRecord = {};
+
+        fn.params.forEach((param,index) => {
+            activationRecord[param] = args[index];
+        });
+
+        const activationEnv = new Environment(
+            activationRecord,
+            fn.env, //static scope
+        );
+
+        return this._evalBody(fn.body, activationEnv);
+
     }
 
     _evalBody(body, env)
